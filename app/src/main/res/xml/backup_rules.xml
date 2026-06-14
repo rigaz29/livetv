@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- DataStore prefs are safe to back up; Room cache is regenerated on launch. -->
+    <include domain="file" path="datastore/" />
+    <exclude domain="database" path="livetv.db" />
+</full-backup-content>
