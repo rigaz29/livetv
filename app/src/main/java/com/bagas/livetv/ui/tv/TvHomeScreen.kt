@@ -1,7 +1,7 @@
 package com.bagas.livetv.ui.tv
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,10 +14,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.MaterialTheme as M3Theme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text as M3Text
+import androidx.compose.material3.darkColorScheme as m3DarkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -44,22 +56,52 @@ fun TvHomeScreen(
     viewModel: ChannelsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var searchVisible by remember { mutableStateOf(false) }
+    val searchFocus = remember { FocusRequester() }
 
     MaterialTheme(colorScheme = darkColorScheme()) {
         Surface(modifier = Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 28.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Live TV", style = MaterialTheme.typography.headlineMedium)
+                    state.selectedGroup?.let { group ->
+                        Text(
+                            "  •  $group",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Spacer(Modifier.weight(1f))
+                    Button(onClick = {
+                        searchVisible = !searchVisible
+                        if (!searchVisible) viewModel.setQuery("")
+                    }) { Text(if (searchVisible) "Tutup" else "Cari") }
+                    Spacer(Modifier.width(12.dp))
                     Button(onClick = onOpenPlaylists) { Text("Playlist") }
                     Spacer(Modifier.width(12.dp))
                     Button(onClick = onOpenSettings) { Text("Pengaturan") }
                 }
+
+                if (searchVisible) {
+                    Spacer(Modifier.height(12.dp))
+                    // Use a Material3 (non-TV) text field, dark-themed so it stays legible.
+                    M3Theme(colorScheme = m3DarkColorScheme()) {
+                        OutlinedTextField(
+                            value = state.query,
+                            onValueChange = viewModel::setQuery,
+                            singleLine = true,
+                            label = { M3Text("Cari channel…") },
+                            modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
+                        )
+                    }
+                    LaunchedEffect(Unit) { runCatching { searchFocus.requestFocus() } }
+                }
+
                 Spacer(Modifier.height(16.dp))
 
                 when {
                     state.loading -> LoadingState()
-                    state.channels.isEmpty() && state.favorites.isEmpty() ->
+                    state.channels.isEmpty() && state.favorites.isEmpty() && state.query.isBlank() ->
                         MessageState(
                             title = "Belum ada channel",
                             subtitle = "Tambahkan playlist dari menu Playlist.",
@@ -80,20 +122,27 @@ private fun ChannelRows(
     onChannelClick: (Channel, String?) -> Unit,
 ) {
     val grouped = state.channels.groupBy { it.group?.takeIf { g -> g.isNotBlank() } ?: "Lainnya" }
+    val searching = state.query.isNotBlank()
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
         contentPadding = PaddingValues(vertical = 8.dp),
     ) {
-        // Favorit/Baru ditonton span categories, so zap through all channels.
-        if (state.favorites.isNotEmpty()) {
+        // Favorit/Baru ditonton span categories, so zap through all channels. Hidden while
+        // searching so the results stay focused on matches.
+        if (!searching && state.favorites.isNotEmpty()) {
             item { ChannelRow("Favorit", state.favorites) { onChannelClick(it, null) } }
         }
-        if (state.history.isNotEmpty()) {
+        if (!searching && state.history.isNotEmpty()) {
             item { ChannelRow("Baru ditonton", state.history) { onChannelClick(it, null) } }
         }
         // Each group row is a category: zap within the channel's own group.
         grouped.forEach { (group, channels) ->
             item { ChannelRow(group, channels) { onChannelClick(it, it.group) } }
+        }
+        if (grouped.isEmpty()) {
+            item {
+                Text("Tidak ada channel cocok.", style = MaterialTheme.typography.titleMedium)
+            }
         }
     }
 }
@@ -106,11 +155,15 @@ private fun ChannelRow(
     onChannelClick: (Channel) -> Unit,
 ) {
     Column {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(bottom = 10.dp),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text(
+                "  ${channels.size}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             items(channels, key = { it.id }) { channel ->
                 TvChannelCard(channel, onClick = { onChannelClick(channel) })
@@ -122,9 +175,14 @@ private fun ChannelRow(
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun TvChannelCard(channel: Channel, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(if (focused) 1.12f else 1f, label = "cardScale")
     Card(
         onClick = onClick,
-        modifier = Modifier.width(168.dp),
+        modifier = Modifier
+            .width(168.dp)
+            .scale(scale)
+            .onFocusChanged { focused = it.isFocused },
     ) {
         Column(Modifier.width(168.dp)) {
             ChannelLogo(
