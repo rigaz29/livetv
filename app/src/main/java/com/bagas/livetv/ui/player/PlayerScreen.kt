@@ -3,7 +3,10 @@ package com.bagas.livetv.ui.player
 import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AspectRatio
@@ -39,7 +43,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -66,6 +79,19 @@ fun PlayerScreen(
     var controlsVisible by remember { mutableStateOf(true) }
     var showTracks by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
+
+    // TV focus: the root captures D-pad keys while controls are hidden; when controls
+    // show, focus jumps to play/pause so the remote drives the on-screen buttons.
+    val rootFocus = remember { FocusRequester() }
+    val playPauseFocus = remember { FocusRequester() }
+    val dialogOpen = showTracks || showSleep
+    LaunchedEffect(controlsVisible, isTv, state.error, dialogOpen) {
+        if (isTv && state.error == null && !dialogOpen) {
+            runCatching {
+                if (controlsVisible) playPauseFocus.requestFocus() else rootFocus.requestFocus()
+            }
+        }
+    }
 
     // Keep the screen awake while the player is on-screen.
     DisposableEffect(Unit) {
@@ -98,21 +124,39 @@ fun PlayerScreen(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(isTv) {
-                if (!isTv) {
-                    var total = 0f
-                    detectVerticalDragGestures(
-                        onDragStart = { total = 0f },
-                        onDragEnd = {
-                            // Swipe up = next channel, swipe down = previous (mobile zapping).
-                            if (total < -120f) viewModel.next()
-                            else if (total > 120f) viewModel.previous()
-                        },
-                        onVerticalDrag = { _, dragAmount -> total += dragAmount },
-                    )
+            .then(
+                if (isTv) {
+                    Modifier
+                        .focusRequester(rootFocus)
+                        .focusable()
+                        .onPreviewKeyEvent { event ->
+                            when {
+                                event.type != KeyEventType.KeyDown -> false
+                                // Back hides the controls first, then exits on a second press.
+                                event.key == Key.Back ->
+                                    if (controlsVisible) { controlsVisible = false; true } else false
+                                // Any other key wakes the controls when they're hidden.
+                                !controlsVisible -> { controlsVisible = true; true }
+                                else -> false
+                            }
+                        }
+                } else {
+                    Modifier
+                        .pointerInput(Unit) {
+                            var total = 0f
+                            detectVerticalDragGestures(
+                                onDragStart = { total = 0f },
+                                onDragEnd = {
+                                    // Swipe up = next channel, swipe down = previous (mobile zapping).
+                                    if (total < -120f) viewModel.next()
+                                    else if (total > 120f) viewModel.previous()
+                                },
+                                onVerticalDrag = { _, dragAmount -> total += dragAmount },
+                            )
+                        }
+                        .clickable { controlsVisible = !controlsVisible }
                 }
-            }
-            .clickable { controlsVisible = !controlsVisible },
+            ),
     ) {
         if (player != null) {
             AndroidView(
@@ -167,6 +211,7 @@ fun PlayerScreen(
             PlayerControls(
                 isTv = isTv,
                 state = state,
+                playPauseFocus = playPauseFocus,
                 onBack = onBack,
                 onPlayPause = viewModel::togglePlayPause,
                 onNext = viewModel::next,
@@ -201,6 +246,7 @@ fun PlayerScreen(
 private fun PlayerControls(
     isTv: Boolean,
     state: PlayerUiState,
+    playPauseFocus: FocusRequester,
     onBack: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
@@ -262,6 +308,7 @@ private fun PlayerControls(
                 "Putar/Jeda",
                 onPlayPause,
                 large = true,
+                focusRequester = playPauseFocus,
             )
             if (state.hasNext || isTv) {
                 ControlIcon(Icons.Filled.SkipNext, "Berikutnya", onNext, enabled = state.hasNext)
@@ -291,8 +338,20 @@ private fun ControlIcon(
     onClick: () -> Unit,
     enabled: Boolean = true,
     large: Boolean = false,
+    focusRequester: FocusRequester? = null,
 ) {
-    IconButton(onClick = onClick, enabled = enabled) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        interactionSource = interaction,
+        modifier = Modifier
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .scale(if (focused) 1.2f else 1f)
+            .clip(CircleShape)
+            .background(if (focused) Color.White.copy(alpha = 0.25f) else Color.Transparent),
+    ) {
         Icon(
             icon,
             contentDescription = label,
