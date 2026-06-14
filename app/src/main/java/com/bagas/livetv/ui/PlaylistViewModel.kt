@@ -2,7 +2,6 @@ package com.bagas.livetv.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bagas.livetv.core.Constants
 import com.bagas.livetv.domain.model.PlaylistSource
 import com.bagas.livetv.domain.model.PlaylistType
 import com.bagas.livetv.domain.repository.PlaylistRepository
@@ -28,8 +27,6 @@ class PlaylistViewModel @Inject constructor(
 
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
-
-    val samplePlaylists: List<Pair<String, String>> = Constants.SAMPLE_M3U_PLAYLISTS
 
     fun addPlaylist(name: String, url: String, type: PlaylistType) {
         if (name.isBlank() || url.isBlank()) {

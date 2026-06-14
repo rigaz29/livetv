@@ -3,6 +3,7 @@ package com.bagas.livetv.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bagas.livetv.core.Constants
+import com.bagas.livetv.domain.model.PlaylistType
 import com.bagas.livetv.domain.model.ThemeMode
 import com.bagas.livetv.domain.repository.PlaylistRepository
 import com.bagas.livetv.domain.repository.SettingsRepository
@@ -20,7 +21,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RootViewModel @Inject constructor(
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
     private val playlistRepository: PlaylistRepository,
 ) : ViewModel() {
 
@@ -39,6 +40,7 @@ class RootViewModel @Inject constructor(
         // on the interval for as long as the app keeps running. Room cache shows the UI
         // immediately while each refresh happens.
         viewModelScope.launch {
+            seedDefaultPlaylistIfNeeded()
             playlistRepository.refreshStale(Constants.PLAYLIST_TTL_MILLIS, force = false)
             while (true) {
                 delay(Constants.PLAYLIST_TTL_MILLIS)
@@ -57,5 +59,18 @@ class RootViewModel @Inject constructor(
 
     fun consumeResume() {
         _resumeChannelId.value = null
+    }
+
+    /**
+     * Seed the bundled default playlist on first launch only. Guarded by a persisted flag so
+     * it is never re-added if the user later deletes it.
+     */
+    private suspend fun seedDefaultPlaylistIfNeeded() {
+        if (settingsRepository.settings.first().defaultPlaylistSeeded) return
+        playlistRepository.addPlaylist(
+            name = Constants.DEFAULT_PLAYLIST_NAME,
+            url = Constants.DEFAULT_PLAYLIST_URL,
+            type = PlaylistType.M3U,
+        ).onSuccess { settingsRepository.setDefaultPlaylistSeeded(true) }
     }
 }

@@ -13,6 +13,8 @@ data class AppSettings(
     val maxCellularBitrate: Long = 2_500_000,
     /** Default ExoPlayer resize mode (AspectRatioFrameLayout.RESIZE_MODE_*). */
     val defaultResizeMode: Int = 0,
+    /** Whether the bundled default playlist has been seeded (first-launch only). */
+    val defaultPlaylistSeeded: Boolean = false,
 )
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK, AMOLED }

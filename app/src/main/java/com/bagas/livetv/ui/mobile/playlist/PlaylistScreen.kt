@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -87,27 +86,8 @@ fun PlaylistScreen(
         ) {
             item {
                 Text(
-                    "Tambah cepat (iptv-org):",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-            item {
-                androidx.compose.foundation.lazy.LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(viewModel.samplePlaylists) { (name, url) ->
-                        AssistChip(
-                            onClick = { viewModel.addPlaylist(name, url, PlaylistType.M3U) },
-                            label = { Text(name) },
-                        )
-                    }
-                }
-            }
-            item {
-                Text(
                     "Playlist tersimpan:",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
             if (playlists.isEmpty()) {

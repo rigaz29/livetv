@@ -5,13 +5,9 @@ object Constants {
     const val DEFAULT_JSON_PLAYLIST_URL =
         "https://raw.githubusercontent.com/USERNAME/REPO/main/playlist.json"
 
-    /** Example iptv-org grouped playlists the user can add with one tap. */
-    val SAMPLE_M3U_PLAYLISTS = listOf(
-        "Indonesia" to "https://iptv-org.github.io/iptv/countries/id.m3u",
-        "Malaysia" to "https://iptv-org.github.io/iptv/countries/my.m3u",
-        "International (News)" to "https://iptv-org.github.io/iptv/categories/news.m3u",
-        "Sports" to "https://iptv-org.github.io/iptv/categories/sports.m3u",
-    )
+    /** Playlist seeded automatically on first launch so the app is usable out of the box. */
+    const val DEFAULT_PLAYLIST_NAME = "IPTV-Org"
+    const val DEFAULT_PLAYLIST_URL = "https://iptv-org.github.io/iptv/index.m3u"
 
     /** Playlist cache time-to-live: refresh automatically when older than this. */
     const val PLAYLIST_TTL_MILLIS = 3 * 60 * 60 * 1000L // 3 hours
