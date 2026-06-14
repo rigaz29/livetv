@@ -7,7 +7,7 @@ object Constants {
 
     /** Playlist seeded automatically on first launch so the app is usable out of the box. */
     const val DEFAULT_PLAYLIST_NAME = "IPTV-Org"
-    const val DEFAULT_PLAYLIST_URL = "https://iptv-org.github.io/iptv/index.m3u"
+    const val DEFAULT_PLAYLIST_URL = "https://iptv-org.github.io/iptv/index.category.m3u"
 
     /** Playlist cache time-to-live: refresh automatically when older than this. */
     const val PLAYLIST_TTL_MILLIS = 3 * 60 * 60 * 1000L // 3 hours
