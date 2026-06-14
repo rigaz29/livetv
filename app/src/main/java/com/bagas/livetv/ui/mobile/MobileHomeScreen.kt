@@ -53,12 +53,14 @@ import com.bagas.livetv.ui.common.MessageState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MobileHomeScreen(
-    onChannelClick: (Channel) -> Unit,
+    onChannelClick: (Channel, String?) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenPlaylists: () -> Unit,
     viewModel: ChannelsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Zap within the category the user is currently browsing.
+    val onChannelClickInGroup: (Channel) -> Unit = { onChannelClick(it, state.selectedGroup) }
 
     Scaffold(
         topBar = {
@@ -124,7 +126,7 @@ fun MobileHomeScreen(
                 ) {
                     ChannelGrid(
                         state = state,
-                        onChannelClick = onChannelClick,
+                        onChannelClick = onChannelClickInGroup,
                         onToggleFavorite = viewModel::toggleFavorite,
                     )
                 }

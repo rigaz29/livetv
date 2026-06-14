@@ -47,6 +47,9 @@ class PlayerViewModel @Inject constructor(
     private val initialChannelId: String =
         checkNotNull(savedStateHandle[Routes.PLAYER_ARG_CHANNEL])
 
+    /** Category the user was browsing when opening the player; null means all channels. */
+    private val groupFilter: String? = savedStateHandle[Routes.PLAYER_ARG_GROUP]
+
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
@@ -55,7 +58,7 @@ class PlayerViewModel @Inject constructor(
 
     private var controller: MediaController? = null
 
-    /** All enabled channels, used for prev/next zapping. */
+    /** Channels used for prev/next zapping, scoped to the browsed category when set. */
     private var channelList: List<Channel> = emptyList()
 
     // Retry state.
@@ -71,7 +74,9 @@ class PlayerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            channelList = repository.observeChannels().first()
+            val all = repository.observeChannels().first()
+            val scoped = if (groupFilter.isNullOrBlank()) all else all.filter { it.group == groupFilter }
+            channelList = scoped.ifEmpty { all }
             val resizeMode = settingsRepository.settings.first().defaultResizeMode
             _uiState.update { it.copy(resizeMode = resizeMode) }
             connect()

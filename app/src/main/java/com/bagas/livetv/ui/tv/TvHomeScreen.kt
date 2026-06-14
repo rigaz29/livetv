@@ -38,7 +38,7 @@ import com.bagas.livetv.ui.common.MessageState
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun TvHomeScreen(
-    onChannelClick: (Channel) -> Unit,
+    onChannelClick: (Channel, String?) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenPlaylists: () -> Unit,
     viewModel: ChannelsViewModel = hiltViewModel(),
@@ -77,21 +77,23 @@ fun TvHomeScreen(
 @Composable
 private fun ChannelRows(
     state: com.bagas.livetv.ui.ChannelsUiState,
-    onChannelClick: (Channel) -> Unit,
+    onChannelClick: (Channel, String?) -> Unit,
 ) {
     val grouped = state.channels.groupBy { it.group?.takeIf { g -> g.isNotBlank() } ?: "Lainnya" }
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(20.dp),
         contentPadding = PaddingValues(vertical = 8.dp),
     ) {
+        // Favorit/Baru ditonton span categories, so zap through all channels.
         if (state.favorites.isNotEmpty()) {
-            item { ChannelRow("Favorit", state.favorites, onChannelClick) }
+            item { ChannelRow("Favorit", state.favorites) { onChannelClick(it, null) } }
         }
         if (state.history.isNotEmpty()) {
-            item { ChannelRow("Baru ditonton", state.history, onChannelClick) }
+            item { ChannelRow("Baru ditonton", state.history) { onChannelClick(it, null) } }
         }
+        // Each group row is a category: zap within the channel's own group.
         grouped.forEach { (group, channels) ->
-            item { ChannelRow(group, channels, onChannelClick) }
+            item { ChannelRow(group, channels) { onChannelClick(it, it.group) } }
         }
     }
 }

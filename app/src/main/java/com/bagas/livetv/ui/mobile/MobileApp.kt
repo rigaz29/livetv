@@ -32,14 +32,21 @@ fun MobileApp(navController: NavHostController, isInPip: Boolean) {
     ) {
         composable(Routes.HOME) {
             MobileHomeScreen(
-                onChannelClick = { navController.navigate(Routes.player(it.id)) },
+                onChannelClick = { channel, group -> navController.navigate(Routes.player(channel.id, group)) },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onOpenPlaylists = { navController.navigate(Routes.PLAYLISTS) },
             )
         }
         composable(
             route = Routes.PLAYER_ROUTE,
-            arguments = listOf(navArgument(Routes.PLAYER_ARG_CHANNEL) { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument(Routes.PLAYER_ARG_CHANNEL) { type = NavType.StringType },
+                navArgument(Routes.PLAYER_ARG_GROUP) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
             enterTransition = { PlayerEnter },
             exitTransition = { PlayerExit },
             popEnterTransition = { PlayerPopEnter },
