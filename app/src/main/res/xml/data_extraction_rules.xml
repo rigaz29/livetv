@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
+        <!-- Only DataStore prefs; the Room cache is excluded by omission. -->
         <include domain="file" path="datastore/" />
-        <exclude domain="database" path="livetv.db" />
     </cloud-backup>
     <device-transfer>
         <include domain="file" path="datastore/" />
