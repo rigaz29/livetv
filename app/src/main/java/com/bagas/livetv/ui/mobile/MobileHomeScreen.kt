@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlaylistPlay
@@ -36,10 +37,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -61,12 +68,20 @@ fun MobileHomeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     // Zap within the category the user is currently browsing.
     val onChannelClickInGroup: (Channel) -> Unit = { onChannelClick(it, state.selectedGroup) }
+    var searchVisible by remember { mutableStateOf(false) }
+    val searchFocus = remember { FocusRequester() }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Live TV") },
                 actions = {
+                    IconButton(onClick = {
+                        searchVisible = !searchVisible
+                        if (!searchVisible) viewModel.setQuery("")
+                    }) {
+                        Icon(Icons.Filled.Search, contentDescription = "Cari")
+                    }
                     IconButton(onClick = onOpenPlaylists) {
                         Icon(Icons.Filled.PlaylistPlay, contentDescription = "Playlist")
                     }
@@ -78,14 +93,28 @@ fun MobileHomeScreen(
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::setQuery,
-                singleLine = true,
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                placeholder = { Text("Cari channel…") },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            )
+            if (searchVisible) {
+                OutlinedTextField(
+                    value = state.query,
+                    onValueChange = viewModel::setQuery,
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            searchVisible = false
+                            viewModel.setQuery("")
+                        }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Tutup pencarian")
+                        }
+                    },
+                    placeholder = { Text("Cari channel…") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                        .focusRequester(searchFocus),
+                )
+                LaunchedEffect(Unit) { searchFocus.requestFocus() }
+            }
 
             if (state.groups.isNotEmpty()) {
                 LazyRow(
